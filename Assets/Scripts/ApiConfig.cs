@@ -4,8 +4,10 @@
 /// </summary>
 public static class ApiConfig
 {
-    // Local development
-    public static string BaseUrl = "http://localhost:8000";
+    // Production
+    public static string BaseUrl = "https://beatnusa-bertbackend-production.up.railway.app";
+    //// Local development
+    // public static string BaseUrl = "http://localhost:8000";
 
     // API endpoint paths
     public static string SongsUpload   => BaseUrl + "/api/songs/upload";
