@@ -1,12 +1,17 @@
-using Melanchall.DryWetMidi.Interaction;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Represents a single lane in the rhythm game.
+/// Now receives notes from JSON beatmap data instead of MIDI.
+/// 
+/// Each lane is identified by its index in SongManager.lanes[] (0, 1, 2, 3)
+/// matching the "lane" field in the beatmap JSON.
+/// </summary>
 public class Lane : MonoBehaviour
 {
-    public Melanchall.DryWetMidi.MusicTheory.NoteName noteRestriction;
     public KeyCode input;
     public GameObject notePrefab;
     List<Note> notes = new List<Note>();
@@ -18,33 +23,44 @@ public class Lane : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        // Add some initial checks in case SongManager or notePrefab are not set
+        Debug.Log($"[Lane] Start() — Lane '{gameObject.name}' initializing...");
+        Debug.Log($"[Lane]   Input key: {input}");
+        Debug.Log($"[Lane]   Note prefab: {(notePrefab != null ? notePrefab.name : "NOT ASSIGNED")}");
+
         if (SongManager.Instance == null)
         {
-            Debug.LogError("SongManager is not initialized!");
+            Debug.LogError($"[Lane] '{gameObject.name}': SongManager is not initialized!");
+        }
+        else
+        {
+            Debug.Log($"[Lane]   SongManager: OK");
         }
 
         if (notePrefab == null)
         {
-            Debug.LogError("Note Prefab is not assigned in the inspector!");
+            Debug.LogError($"[Lane] '{gameObject.name}': Note Prefab is NOT assigned!");
         }
     }
 
-    public void SetTimeStamps(Melanchall.DryWetMidi.Interaction.Note[] array)
+    /// <summary>
+    /// Receive notes from the beatmap JSON for this lane.
+    /// Converts time_ms (milliseconds) to seconds for the timestamp list.
+    /// </summary>
+    public void SetTimeStampsFromJson(List<BeatmapNote> laneNotes)
     {
-        if (SongManager.midiFile == null)
+        timeStamps.Clear();
+
+        foreach (var note in laneNotes)
         {
-            Debug.LogError("MidiFile is not set in SongManager!");
-            return;
+            // Convert milliseconds to seconds
+            double timeInSeconds = note.time_ms / 1000.0;
+            timeStamps.Add(timeInSeconds);
         }
 
-        foreach (var note in array)
+        Debug.Log($"[Lane] '{gameObject.name}': {timeStamps.Count} timestamps set from JSON.");
+        if (timeStamps.Count > 0)
         {
-            if (note.NoteName == noteRestriction)
-            {
-                var metricTimeSpan = TimeConverter.ConvertTo<MetricTimeSpan>(note.Time, SongManager.midiFile.GetTempoMap());
-                timeStamps.Add((double)metricTimeSpan.Minutes * 60f + metricTimeSpan.Seconds + (double)metricTimeSpan.Milliseconds / 1000f);
-            }
+            Debug.Log($"[Lane]   First note: {timeStamps[0]:F3}s, Last note: {timeStamps[timeStamps.Count - 1]:F3}s");
         }
     }
 
@@ -53,6 +69,12 @@ public class Lane : MonoBehaviour
     {
         // Check SongManager and notePrefab before proceeding
         if (SongManager.Instance == null || notePrefab == null)
+        {
+            return;
+        }
+
+        // Don't process until the beatmap is loaded
+        if (!SongManager.Instance.beatmapLoaded)
         {
             return;
         }
@@ -88,13 +110,15 @@ public class Lane : MonoBehaviour
 
             if (Input.GetKeyDown(input))
             {
-                if (Math.Abs(audioTime - timeStamp) < marginOfError)
+                double offset = Math.Abs(audioTime - timeStamp);
+
+                if (offset < marginOfError)
                 {
-                    Hit();
-                    Debug.Log($"Hit on {inputIndex} note");
+                    Hit(offset);
+                    Debug.Log($"[Lane] '{gameObject.name}': HIT note #{inputIndex} (offset: {offset * 1000:F1}ms)");
 
                     // Safeguard in case the note has already been destroyed
-                    if (notes[inputIndex] != null)
+                    if (inputIndex < notes.Count && notes[inputIndex] != null)
                     {
                         Destroy(notes[inputIndex].gameObject);
                     }
@@ -103,7 +127,7 @@ public class Lane : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"Hit inaccurate on {inputIndex} note with {Math.Abs(audioTime - timeStamp)} delay");
+                    Debug.Log($"[Lane] '{gameObject.name}': Input too early/late for note #{inputIndex} (offset: {offset * 1000:F1}ms, margin: {marginOfError * 1000:F1}ms)");
                 }
             }
 
@@ -111,18 +135,17 @@ public class Lane : MonoBehaviour
             if (timeStamp + marginOfError <= audioTime)
             {
                 Miss();
-                Debug.Log($"Missed {inputIndex} note");
+                Debug.Log($"[Lane] '{gameObject.name}': MISSED note #{inputIndex} (expected: {timeStamp:F3}s, current: {audioTime:F3}s)");
                 inputIndex++;
             }
         }
     }
 
-    private void Hit()
+    private void Hit(double offsetSeconds)
     {
-        ScoreManager.Hit();
+        ScoreManager.Hit(offsetSeconds);
         AnimManagerPlayer.Hit();
         AnimManagerOrc.Hit();
-
     }
 
     private void Miss()

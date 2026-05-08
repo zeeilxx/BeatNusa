@@ -8,28 +8,34 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Opening.unity
     guid: 84d009de9e00d8e48803696ccabeb334
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/OPCutScene.unity
     guid: 308f1f0cef1632c47911e361137e006d
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Overworld.unity
     guid: 04869581b828cb04dbd031d7eda7f9cd
   - enabled: 1
-    path: Assets/Scenes/LevelOne.unity
+    path: Assets/Scenes/BeatNusa/LevelOne.unity
     guid: 83feddeb1cb83f84c9c67166452189f4
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LevelTwo.unity
     guid: 1176dc7ee809dc0449bbc03b978b92ba
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LevelThree.unity
     guid: 752c92fddd8e402439d6cc7bfc04a819
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LevelBoss.unity
     guid: 5bcb761346aacb54f8baece959ed522f
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/EDCutScene.unity
     guid: 21d23268bbf908a459075fa477ab50fa
+  - enabled: 1
+    path: Assets/Scenes/BeatNusa/MainMenu.unity
+    guid: 9ed49397e421ee8448397786ce743f5d
+  - enabled: 1
+    path: Assets/Scenes/BeatNusa/SongSelect.unity
+    guid: e1f30522694f07546ac366f304475c30
   m_configObjects: {}

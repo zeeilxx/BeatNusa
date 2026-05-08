@@ -162,7 +162,7 @@ public class MapMovement : MonoBehaviour
                 break;
 
             case 4:
-                if (prefabToSpawn.Length > 3)
+                if (prefabToSpawn.Length > 2)
                 {
                     SpawnPrefabAt(screenCenter, 3);  // Spawn the fourth prefab
                 }
