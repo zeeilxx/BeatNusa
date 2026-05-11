@@ -18,6 +18,12 @@ EditorBuildSettings:
     path: Assets/Scenes/Overworld.unity
     guid: 04869581b828cb04dbd031d7eda7f9cd
   - enabled: 1
+    path: Assets/Scenes/BeatNusa/MainMenu.unity
+    guid: 9ed49397e421ee8448397786ce743f5d
+  - enabled: 1
+    path: Assets/Scenes/BeatNusa/SongSelect.unity
+    guid: e1f30522694f07546ac366f304475c30
+  - enabled: 1
     path: Assets/Scenes/BeatNusa/LevelOne.unity
     guid: 83feddeb1cb83f84c9c67166452189f4
   - enabled: 0
@@ -32,10 +38,4 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/EDCutScene.unity
     guid: 21d23268bbf908a459075fa477ab50fa
-  - enabled: 1
-    path: Assets/Scenes/BeatNusa/MainMenu.unity
-    guid: 9ed49397e421ee8448397786ce743f5d
-  - enabled: 1
-    path: Assets/Scenes/BeatNusa/SongSelect.unity
-    guid: e1f30522694f07546ac366f304475c30
   m_configObjects: {}

@@ -12,6 +12,9 @@ using UnityEngine;
 /// </summary>
 public class Lane : MonoBehaviour
 {
+    [Header("Miss Feedback")]
+    public GameObject missTextPrefab;
+    public float missTextYOffset = 0.6f;
     public KeyCode input;
     public GameObject notePrefab;
     List<Note> notes = new List<Note>();
@@ -150,8 +153,29 @@ public class Lane : MonoBehaviour
 
     private void Miss()
     {
-        ScoreManager.Miss();
-        AnimManagerPlayer.Miss();
-        AnimManagerOrc.Miss();
+    ScoreManager.Miss();
+
+    SpawnMissText();
+
+    AnimManagerPlayer.Miss();
+    AnimManagerOrc.Miss();
+    }
+
+    private void SpawnMissText()
+    {
+        if (missTextPrefab == null)
+        {
+            Debug.LogWarning($"[Lane] '{gameObject.name}': Miss Text Prefab is not assigned!");
+            return;
+        }
+
+        GameObject missText = Instantiate(missTextPrefab, transform);
+
+        float targetY = SongManager.Instance != null
+            ? SongManager.Instance.noteDespawnY + missTextYOffset
+            : missTextYOffset;
+
+        missText.transform.localPosition = new Vector3(0f, targetY, -1f);
+        missText.transform.localRotation = Quaternion.identity;
     }
 }
