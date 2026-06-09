@@ -15,6 +15,7 @@ public class Lane : MonoBehaviour
     [Header("Miss Feedback")]
     public GameObject missTextPrefab;
     public float missTextYOffset = 0.6f;
+    public float missTextLifetime = 0.45f;
     public KeyCode input;
     public GameObject notePrefab;
     List<Note> notes = new List<Note>();
@@ -162,20 +163,16 @@ public class Lane : MonoBehaviour
     }
 
     private void SpawnMissText()
+{
+    if (missTextPrefab == null)
     {
-        if (missTextPrefab == null)
-        {
-            Debug.LogWarning($"[Lane] '{gameObject.name}': Miss Text Prefab is not assigned!");
-            return;
-        }
-
-        GameObject missText = Instantiate(missTextPrefab, transform);
-
-        float targetY = SongManager.Instance != null
-            ? SongManager.Instance.noteDespawnY + missTextYOffset
-            : missTextYOffset;
-
-        missText.transform.localPosition = new Vector3(0f, targetY, -1f);
-        missText.transform.localRotation = Quaternion.identity;
+        Debug.LogWarning($"[Lane] '{gameObject.name}': Miss Text Prefab is not assigned!");
+        return;
     }
+
+    GameObject missText = Instantiate(missTextPrefab, transform);
+
+    missText.transform.localPosition = new Vector3(0f, missTextYOffset, -1f);
+    missText.transform.localRotation = Quaternion.identity;
+}
 }

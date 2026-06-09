@@ -2,67 +2,23 @@ using UnityEngine;
 
 public class OpenPopupButton : MonoBehaviour
 {
-    private SpriteRenderer spriteRenderer;
-
-    public Color normalColor = Color.white;
-    public Color hoverColor = Color.gray;
-    public Color pressedColor = Color.black;
-
     [SerializeField] private GameObject popupToOpen;
 
-    private void Awake()
+    public void OpenPopup()
     {
-        spriteRenderer = GetComponent<SpriteRenderer>();
+        Debug.Log("Input Music button clicked");
 
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = normalColor;
-        }
-    }
-
-    private void OnMouseEnter()
-    {
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = hoverColor;
-        }
-    }
-
-    private void OnMouseExit()
-    {
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = normalColor;
-        }
-    }
-
-    private void OnMouseDown()
-    {
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = pressedColor;
-        }
-
-        if (popupToOpen != null)
-        {
-            Invoke(nameof(OpenPopup), 0.1f);
-        }
-        else
+        if (popupToOpen == null)
         {
             Debug.LogError("Popup to open is not assigned!");
+            return;
         }
-    }
 
-    private void OnMouseUp()
-    {
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = hoverColor;
-        }
-    }
-
-    private void OpenPopup()
-    {
         popupToOpen.SetActive(true);
+        popupToOpen.transform.SetAsLastSibling();
+
+        Debug.Log("Popup opened: " + popupToOpen.name);
+        Debug.Log("Active Self: " + popupToOpen.activeSelf);
+        Debug.Log("Active In Hierarchy: " + popupToOpen.activeInHierarchy);
     }
 }

@@ -16,19 +16,29 @@ public class MissTextEffect : MonoBehaviour
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+
+    private void OnEnable()
+    {
+        timer = 0f;
+        lifetime = Mathf.Max(0.1f, lifetime);
+
         startPosition = transform.localPosition;
         transform.localScale = Vector3.one * startScale;
 
         if (spriteRenderer != null)
         {
             startColor = spriteRenderer.color;
+            startColor.a = 1f;
+            spriteRenderer.color = startColor;
         }
     }
 
     private void Update()
     {
         timer += Time.deltaTime;
-        float t = timer / lifetime;
+
+        float t = Mathf.Clamp01(timer / lifetime);
 
         transform.localPosition = Vector3.Lerp(
             startPosition,
