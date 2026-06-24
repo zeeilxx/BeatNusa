@@ -36,9 +36,10 @@ var StandaloneFileBrowserWebGLPlugin = {
             // for (var i = 0; i < event.target.files.length; i++) {
             //     console.log(URL.createObjectURL(event.target.files[i]));
             // }
-            // File selected
-            SendMessage(gameObjectName, 'OnFileUploaded', URL.createObjectURL(event.target.files[0]));
-
+            var file = event.target.files[0];
+            var blobUrl = URL.createObjectURL(file);
+            SendMessage(gameObjectName, 'OnFileUploaded', blobUrl + ">" + file.name);
+ 
             // Remove after file selected
             document.body.removeChild(fileInput);
         }

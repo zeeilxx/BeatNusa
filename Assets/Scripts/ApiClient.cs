@@ -23,10 +23,8 @@ public static class ApiClient
         Action<string> onError)
     {
         Debug.Log($"[ApiClient] ════════════════════════════════════════");
-        Debug.Log($"[ApiClient] UploadAudio START");
-        Debug.Log($"[ApiClient]   URL: {ApiConfig.SongsUpload}");
+        Debug.Log($"[ApiClient] UploadAudio (File) START");
         Debug.Log($"[ApiClient]   File: {filePath}");
-        Debug.Log($"[ApiClient]   Title: {title}");
 
         if (!File.Exists(filePath))
         {
@@ -37,6 +35,22 @@ public static class ApiClient
 
         byte[] fileData = File.ReadAllBytes(filePath);
         string fileName = Path.GetFileName(filePath);
+        yield return UploadAudio(fileData, fileName, title, onSuccess, onError);
+    }
+
+    public static IEnumerator UploadAudio(
+        byte[] fileData,
+        string fileName,
+        string title,
+        Action<UploadResponse> onSuccess,
+        Action<string> onError)
+    {
+        Debug.Log($"[ApiClient] ════════════════════════════════════════");
+        Debug.Log($"[ApiClient] UploadAudio (Bytes) START");
+        Debug.Log($"[ApiClient]   URL: {ApiConfig.SongsUpload}");
+        Debug.Log($"[ApiClient]   FileName: {fileName}");
+        Debug.Log($"[ApiClient]   Title: {title}");
+
         Debug.Log($"[ApiClient]   File size: {fileData.Length} bytes ({fileData.Length / 1024f:F1} KB)");
         Debug.Log($"[ApiClient]   MIME type: {GetMimeType(fileName)}");
 
@@ -284,19 +298,27 @@ public static class ApiClient
             }
             else
             {
-                AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
-                if (clip == null || clip.loadState == AudioDataLoadState.Failed)
+                try
                 {
-                    Debug.LogError($"[ApiClient] DownloadAudio FAILED — GetContent returned null or failed. Ensure the audio format ({fileFormat}) is supported in WebGL.");
-                    onError?.Invoke("Format audio tidak didukung atau corrupt.");
+                    AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                    if (clip == null || clip.loadState == AudioDataLoadState.Failed)
+                    {
+                        Debug.LogError($"[ApiClient] DownloadAudio FAILED — GetContent returned null or failed. Ensure the audio format ({fileFormat}) is supported in WebGL.");
+                        onError?.Invoke("Format audio tidak didukung atau corrupt.");
+                    }
+                    else
+                    {
+                        Debug.Log($"[ApiClient] DownloadAudio SUCCESS");
+                        Debug.Log($"[ApiClient]   Duration: {clip.length:F2}s");
+                        Debug.Log($"[ApiClient]   Frequency: {clip.frequency}Hz");
+                        Debug.Log($"[ApiClient]   Channels: {clip.channels}");
+                        onSuccess?.Invoke(clip);
+                    }
                 }
-                else
+                catch (System.Exception ex)
                 {
-                    Debug.Log($"[ApiClient] DownloadAudio SUCCESS");
-                    Debug.Log($"[ApiClient]   Duration: {clip.length:F2}s");
-                    Debug.Log($"[ApiClient]   Frequency: {clip.frequency}Hz");
-                    Debug.Log($"[ApiClient]   Channels: {clip.channels}");
-                    onSuccess?.Invoke(clip);
+                    Debug.LogError($"[ApiClient] Exception during DownloadAudio GetContent: {ex.Message}");
+                    onError?.Invoke(ex.Message);
                 }
             }
         }
@@ -334,12 +356,28 @@ public static class ApiClient
             }
             else
             {
-                AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
-                Debug.Log($"[ApiClient] LoadLocalAudio SUCCESS");
-                Debug.Log($"[ApiClient]   Duration: {clip.length:F2}s");
-                Debug.Log($"[ApiClient]   Frequency: {clip.frequency}Hz");
-                Debug.Log($"[ApiClient]   Channels: {clip.channels}");
-                onSuccess?.Invoke(clip);
+                try
+                {
+                    AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                    if (clip == null || clip.loadState == AudioDataLoadState.Failed)
+                    {
+                        Debug.LogError($"[ApiClient] LoadLocalAudio FAILED — GetContent returned null or failed.");
+                        onError?.Invoke("GetContent returned null or failed load state.");
+                    }
+                    else
+                    {
+                        Debug.Log($"[ApiClient] LoadLocalAudio SUCCESS");
+                        Debug.Log($"[ApiClient]   Duration: {clip.length:F2}s");
+                        Debug.Log($"[ApiClient]   Frequency: {clip.frequency}Hz");
+                        Debug.Log($"[ApiClient]   Channels: {clip.channels}");
+                        onSuccess?.Invoke(clip);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[ApiClient] Exception during LoadLocalAudio GetContent: {ex.Message}");
+                    onError?.Invoke(ex.Message);
+                }
             }
         }
         Debug.Log($"[ApiClient] LoadLocalAudio END");

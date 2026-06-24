@@ -300,9 +300,8 @@ public class SongManager : MonoBehaviour
     // Get the current time of the audio playing
     public static double GetAudioSourceTime()
     {
-        if (Instance == null || Instance.audioSource == null)
+        if (Instance == null || Instance.audioSource == null || Instance.audioSource.clip == null)
         {
-            Debug.LogError("SongManager Instance or AudioSource is null!");
             return 0;
         }
 

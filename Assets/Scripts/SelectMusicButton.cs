@@ -5,6 +5,8 @@ using TMPro;
 using System.IO;
 using System.Collections;
 using SFB;
+using UnityEngine.EventSystems;
+using System.Runtime.InteropServices;
 
 /// <summary>
 /// Lets the user select a local audio file, upload it to the backend for
@@ -16,7 +18,7 @@ using SFB;
 ///   3. Auto-upload to backend → poll status until beatmap is generated
 ///   4. Beatmap completed → auto-navigate to gameplay scene
 /// </summary>
-public class SelectMusicButton : MonoBehaviour
+public class SelectMusicButton : MonoBehaviour, IPointerDownHandler
 {
     [Header("UI References")]
     [SerializeField] private TMP_Text selectedMusicText;
@@ -44,19 +46,27 @@ public class SelectMusicButton : MonoBehaviour
     private bool isUploading = false;
 
     private void Start()
-{
-    if (statusText != null)
     {
-        statusText.text = "";
-        statusText.gameObject.SetActive(false);
+        if (statusText != null)
+        {
+            statusText.text = "";
+            statusText.gameObject.SetActive(false);
+        }
+
+        if (loadingPanel != null)
+            loadingPanel.SetActive(false);
+
+        if (progressBarFill != null)
+            progressBarFill.fillAmount = 0f;
+
+        #if UNITY_WEBGL && !UNITY_EDITOR
+        var button = GetComponent<UnityEngine.UI.Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+        }
+        #endif
     }
-
-    if (loadingPanel != null)
-        loadingPanel.SetActive(false);
-
-    if (progressBarFill != null)
-        progressBarFill.fillAmount = 0f;
-}
 
     /// <summary>
     /// Opens the file browser for audio selection.
@@ -93,8 +103,10 @@ public class SelectMusicButton : MonoBehaviour
             if (selectedMusicText != null)
                 selectedMusicText.text = fileName;
 
-            // Save the local audio path for gameplay scene to use
+            // Save the local audio path and format for gameplay scene to use
             PlayerPrefs.SetString("SelectedAudioPath", selectedMusicPath);
+            string format = Path.GetExtension(selectedMusicPath).ToLower().TrimStart('.');
+            PlayerPrefs.SetString("SelectedAudioFormat", format);
             PlayerPrefs.Save();
 
             Debug.Log($"[SelectMusicButton] File selected: {selectedMusicPath}");
@@ -138,10 +150,19 @@ public class SelectMusicButton : MonoBehaviour
 
         if (!audioLoaded)
         {
-            SetStatus($"Gagal memuat audio.\nCoba file lain.");
-            Debug.LogError("[SelectMusicButton] Pipeline ABORTED — audio load failed.");
-            HideLoading();
-            yield break;
+            string ext = Path.GetExtension(filePath).ToLower();
+            if (ext == ".mp3")
+            {
+                Debug.LogWarning("[SelectMusicButton] Local audio load failed (expected for MP3 on Windows due to FMOD local MP3 limitations). Continuing pipeline using backend download fallback...");
+                audioLoaded = true; // Bypass local load failure for MP3 files
+            }
+            else
+            {
+                SetStatus($"Gagal memuat audio.\nCoba file lain.");
+                Debug.LogError("[SelectMusicButton] Pipeline ABORTED — audio load failed.");
+                HideLoading();
+                yield break;
+            }
         }
 
         SetProgress(0.3f);
@@ -163,6 +184,8 @@ public class SelectMusicButton : MonoBehaviour
 
                 // Save for gameplay scene
                 PlayerPrefs.SetString("SelectedSongCode", response.song_code);
+                string format = Path.GetExtension(filePath).ToLower().TrimStart('.');
+                PlayerPrefs.SetString("SelectedAudioFormat", format);
                 PlayerPrefs.Save();
 
                 Debug.Log($"[SelectMusicButton]   Upload SUCCESS! Song code: {response.song_code}");
@@ -263,6 +286,8 @@ public class SelectMusicButton : MonoBehaviour
             {
                 uploadedSongCode = response.song_code;
                 PlayerPrefs.SetString("SelectedSongCode", response.song_code);
+                string format = Path.GetExtension(selectedMusicPath).ToLower().TrimStart('.');
+                PlayerPrefs.SetString("SelectedAudioFormat", format);
                 PlayerPrefs.Save();
 
                 Debug.Log($"[SelectMusicButton]   Upload SUCCESS! Song code: {response.song_code}");
@@ -395,17 +420,33 @@ public class SelectMusicButton : MonoBehaviour
             }
             else
             {
-                loadedClip = DownloadHandlerAudioClip.GetContent(www);
-                Debug.Log($"[SelectMusicButton] LoadLocalAudioClip SUCCESS: {loadedClip.length:F2}s, {loadedClip.frequency}Hz");
-                SetStatus($"Audio dimuat: {Path.GetFileName(filePath)} ({loadedClip.length:F1}s)");
-
-                // Store the clip for preview
-                if (previewAudioSource != null)
+                try
                 {
-                    previewAudioSource.clip = loadedClip;
-                }
+                    loadedClip = DownloadHandlerAudioClip.GetContent(www);
+                    if (loadedClip == null || loadedClip.loadState == AudioDataLoadState.Failed)
+                    {
+                        Debug.LogError("[SelectMusicButton] DownloadHandlerAudioClip returned null or failed load state.");
+                        onComplete?.Invoke(false);
+                    }
+                    else
+                    {
+                        Debug.Log($"[SelectMusicButton] LoadLocalAudioClip SUCCESS: {loadedClip.length:F2}s, {loadedClip.frequency}Hz");
+                        SetStatus($"Audio dimuat: {Path.GetFileName(filePath)} ({loadedClip.length:F1}s)");
 
-                onComplete?.Invoke(true);
+                        // Store the clip for preview
+                        if (previewAudioSource != null)
+                        {
+                            previewAudioSource.clip = loadedClip;
+                        }
+
+                        onComplete?.Invoke(true);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[SelectMusicButton] Exception during DownloadHandlerAudioClip.GetContent: {ex.Message}");
+                    onComplete?.Invoke(false);
+                }
             }
         }
     }
@@ -469,4 +510,130 @@ public class SelectMusicButton : MonoBehaviour
     {
         return loadedClip;
     }
+
+    #if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")]
+    private static extern void UploadFile(string id);
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        Debug.Log("[SelectMusicButton] OnPointerDown() called (WebGL).");
+        if (isUploading)
+        {
+            SetStatus("Proses upload sedang berjalan.\nMohon tunggu...");
+            return;
+        }
+        UploadFile(gameObject.name);
+    }
+
+    // Called from browser in WebGL when a file is selected
+    public void OnFileUploaded(string urlWithFilename)
+    {
+        Debug.Log($"[SelectMusicButton] OnFileUploaded WebGL: {urlWithFilename}");
+        StartCoroutine(WebGLPipeline(urlWithFilename));
+    }
+
+    private IEnumerator WebGLPipeline(string urlWithFilename)
+    {
+        string[] parts = urlWithFilename.Split('>');
+        string blobUrl = parts[0];
+        string fileName = parts.Length > 1 ? parts[1] : "uploaded_song.mp3";
+        string title = Path.GetFileNameWithoutExtension(fileName);
+
+        Debug.Log($"[SelectMusicButton] WebGLPipeline START");
+        Debug.Log($"[SelectMusicButton]   Blob URL: {blobUrl}");
+        Debug.Log($"[SelectMusicButton]   FileName: {fileName}");
+
+        ShowLoading();
+        SetProgress(0.1f);
+
+        // ── Step 1: Load/Download audio bytes from blob URL ──────────────────
+        SetStatus("Membaca file audio...");
+        byte[] fileData = null;
+
+        using (UnityWebRequest www = UnityWebRequest.Get(blobUrl))
+        {
+            yield return www.SendWebRequest();
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"[SelectMusicButton] Failed to read blob data: {www.error}");
+                SetStatus("Gagal membaca audio.");
+                HideLoading();
+                yield break;
+            }
+            fileData = www.downloadHandler.data;
+        }
+
+        SetProgress(0.3f);
+
+        // Save SelectedAudioPath and SelectedAudioFormat
+        PlayerPrefs.SetString("SelectedAudioPath", blobUrl);
+        string format = Path.GetExtension(fileName).ToLower().TrimStart('.');
+        PlayerPrefs.SetString("SelectedAudioFormat", format);
+        PlayerPrefs.Save();
+
+        // ── Step 2: Upload to backend ───────────────────────
+        SetStatus("Mengupload audio...\n(Mohon tunggu)");
+        isUploading = true;
+
+        bool uploadDone = false;
+        bool uploadSuccess = false;
+
+        yield return ApiClient.UploadAudio(
+            fileData,
+            fileName,
+            title,
+            onSuccess: (response) =>
+            {
+                uploadedSongCode = response.song_code;
+                PlayerPrefs.SetString("SelectedSongCode", response.song_code);
+                PlayerPrefs.Save();
+
+                Debug.Log($"[SelectMusicButton]   Upload SUCCESS! Song code: {response.song_code}");
+                SetStatus($"Upload berhasil!\nKode: {response.song_code}\nMemulai generate beatmap...");
+                uploadSuccess = true;
+                uploadDone = true;
+            },
+            onError: (error) =>
+            {
+                SetStatus($"Upload gagal: {error}\nCoba lagi.");
+                Debug.LogError($"[SelectMusicButton]   Upload FAILED: {error}");
+                uploadDone = true;
+            }
+        );
+
+        while (!uploadDone) yield return null;
+
+        if (!uploadSuccess)
+        {
+            isUploading = false;
+            HideLoading();
+            yield break;
+        }
+
+        SetProgress(0.6f);
+
+        // ── Step 3: Poll until beatmap is generated ─────────
+        bool beatmapReady = false;
+        yield return PollSongStatus(uploadedSongCode, (success) => { beatmapReady = success; });
+
+        isUploading = false;
+
+        if (!beatmapReady)
+        {
+            HideLoading();
+            yield break;
+        }
+
+        SetProgress(1f);
+
+        // ── Step 4: Navigate to gameplay ────────────────────
+        SetStatus("Beatmap siap!\nMemuat game...");
+        yield return new WaitForSeconds(1.5f);
+
+        SceneManager.LoadScene(gameplaySceneName);
+    }
+    #else
+    public void OnPointerDown(PointerEventData eventData) {}
+    #endif
 }
