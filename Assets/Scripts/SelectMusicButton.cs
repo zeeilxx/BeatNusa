@@ -74,6 +74,10 @@ public class SelectMusicButton : MonoBehaviour, IPointerDownHandler
     /// </summary>
     public void OpenMusicBrowser()
     {
+        #if UNITY_WEBGL && !UNITY_EDITOR
+        // Do nothing in WebGL builds, because it's handled by OnPointerDown!
+        return;
+        #else
         Debug.Log("[SelectMusicButton] OpenMusicBrowser() called.");
 
         if (isUploading)
@@ -119,6 +123,7 @@ public class SelectMusicButton : MonoBehaviour, IPointerDownHandler
         {
             Debug.Log("[SelectMusicButton] No file selected.");
         }
+        #endif
     }
 
     /// <summary>
