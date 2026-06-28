@@ -89,7 +89,7 @@ public class SelectMusicButton : MonoBehaviour, IPointerDownHandler
 
         var extensions = new[]
         {
-            new ExtensionFilter("Audio Files", "mp3", "wav", "ogg")
+            new ExtensionFilter("Audio Files", "mp3", "wav")
         };
 
         string[] paths = StandaloneFileBrowser.OpenFilePanel(

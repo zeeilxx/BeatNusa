@@ -43,6 +43,7 @@ public class ScoreManager : MonoBehaviour
 
     private bool resultsSubmitted = false;
     private bool songFinished = false;
+    private bool songHasBeenPlaying = false;
 
     void Start()
     {
@@ -72,6 +73,7 @@ public class ScoreManager : MonoBehaviour
         totalOffsetMs = 0f;
         resultsSubmitted = false;
         songFinished = false;
+        songHasBeenPlaying = false;
         Debug.Log("[ScoreManager]   ✓ Stats reset complete.");
     }
 
@@ -168,12 +170,23 @@ public class ScoreManager : MonoBehaviour
         // Update the displayed score
         scoreText.text = healthScore.ToString();
 
+        // Track that audio has actually been confirmed playing at least once
+        // (needed for WebGL where Play() doesn't immediately set isPlaying=true)
+        if (!songHasBeenPlaying && SongManager.Instance != null && SongManager.Instance.songStarted)
+        {
+            if (SongManager.Instance.audioSource != null && SongManager.Instance.audioSource.isPlaying)
+            {
+                songHasBeenPlaying = true;
+                Debug.Log("[ScoreManager] Audio confirmed playing.");
+            }
+        }
+
         // Check if the song has ended naturally (not by death)
-        if (!songFinished && SongManager.Instance != null && SongManager.Instance.beatmapLoaded)
+        // Only triggers after audio was confirmed playing and then stopped
+        if (!songFinished && songHasBeenPlaying)
         {
             if (SongManager.Instance.audioSource != null &&
-                !SongManager.Instance.audioSource.isPlaying &&
-                SongManager.GetAudioSourceTime() > 0)
+                !SongManager.Instance.audioSource.isPlaying)
             {
                 songFinished = true;
                 OnSongFinished();

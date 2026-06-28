@@ -38,6 +38,7 @@ public class SongManager : MonoBehaviour
     [HideInInspector] public int beatmapId;
     [HideInInspector] public int totalNotes;
     [HideInInspector] public bool beatmapLoaded = false;
+    [HideInInspector] public bool songStarted = false;
 
     // Awake is called before the first frame update to handle Singleton logic
     void Awake()
@@ -275,6 +276,7 @@ public class SongManager : MonoBehaviour
             Debug.Log($"[SongManager]   Duration: {audioSource.clip.length:F2}s");
             Debug.Log($"[SongManager]   Total notes: {totalNotes}");
             audioSource.Play();
+            songStarted = true;
             Debug.Log("[SongManager]   ✓ Song started!");
         }
         else

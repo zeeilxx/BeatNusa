@@ -12,46 +12,65 @@ public class SliderController : MonoBehaviour
     public KeyCode skipKey2 = KeyCode.Return; // Second skip key (Enter)
 
     private bool audioStopped = false; // Flag to check if audio has been stopped manually
+    private bool sliderInitialized = false; // Flag: slider has been set up with clip duration
+    private bool audioHasPlayed = false; // Flag: audio was confirmed playing at least once
 
     void Start()
     {
-        if (audioSource != null && slider != null)
+        // Don't initialize slider here — in WebGL the clip may not be loaded yet.
+        // Initialization is deferred to Update() once the clip is ready.
+        if (slider != null)
         {
-            // Set the slider's max value to the duration of the audio
-            slider.maxValue = audioSource.clip.length;
-            slider.value = audioSource.clip.length; // Set to full duration for countdown timer
-        }
-        else
-        {
-            Debug.LogWarning("AudioSource or Slider is not assigned.");
+            slider.value = 1f; // Prevent immediate zero trigger
         }
     }
 
     void Update()
     {
-        if (audioSource != null && slider != null)
-        {
-            // If audio is playing, update the slider value based on the remaining audio time
-            if (!audioStopped)
-            {
-                slider.value = audioSource.clip.length - audioSource.time;
+        if (audioSource == null || slider == null) return;
 
-                // Check if the slider value reaches 0 and trigger the death animation and prefab spawn
-                if (slider.value <= 0 && !deathTriggered)
-                {
-                    deathTriggered = true; // Prevent multiple calls
-                    TriggerDeath(); // Trigger the death animation and spawn prefab
-                }
+        // ── Deferred initialization: wait until clip is actually loaded ──
+        if (!sliderInitialized)
+        {
+            if (audioSource.clip != null && audioSource.clip.length > 0)
+            {
+                slider.maxValue = audioSource.clip.length;
+                slider.value = audioSource.clip.length;
+                sliderInitialized = true;
+                Debug.Log($"[SliderController] Slider initialized — clip length: {audioSource.clip.length:F2}s");
             }
             else
             {
-                // Ensure the slider is at 0 when the audio is stopped
-                slider.value = 0;
-                if (!deathTriggered)
-                {
-                    deathTriggered = true;
-                    TriggerDeath();
-                }
+                return; // Clip not ready yet, skip everything
+            }
+        }
+
+        // ── Track that audio has actually been playing ──
+        if (!audioHasPlayed && audioSource.isPlaying)
+        {
+            audioHasPlayed = true;
+            Debug.Log("[SliderController] Audio confirmed playing.");
+        }
+
+        // ── Update slider ──
+        if (!audioStopped)
+        {
+            slider.value = audioSource.clip.length - audioSource.time;
+
+            // Only check for song end if audio was confirmed playing first
+            if (audioHasPlayed && slider.value <= 0 && !deathTriggered)
+            {
+                deathTriggered = true;
+                TriggerDeath();
+            }
+        }
+        else
+        {
+            slider.value = 0;
+            if (!deathTriggered)
+            {
+                deathTriggered = true;
+                TriggerDeath();
             }
         }
 
@@ -60,11 +79,9 @@ public class SliderController : MonoBehaviour
         {
             if (audioSource != null)
             {
-                // Stop the audio immediately and set slider to 0
                 audioSource.Stop();
-                audioStopped = true; // Mark the audio as stopped
+                audioStopped = true;
 
-                // Trigger the death animation and spawn prefab
                 if (!deathTriggered)
                 {
                     deathTriggered = true;
@@ -79,6 +96,12 @@ public class SliderController : MonoBehaviour
     {
         AnimManagerOrc.Death(); // Call the Death animation
         Debug.Log("Death animation triggered.");
+
+        // Submit results when song finishes via slider
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.SubmitResults();
+        }
 
         // Instantiate the win prefab at the center of the screen with z = -8f
         if (winPrefab != null)
